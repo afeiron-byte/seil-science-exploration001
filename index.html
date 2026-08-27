@@ -84,6 +84,7 @@
         .standards-box { border-left: 4px solid #3b82f6; }
         .materials-box { border-left: 4px solid #10b981; }
         .circuit-box { border-left: 4px solid #f59e0b; }
+        .procedure-box { border-left: 4px solid #8b5cf6; }
 
         .tag {
             display: inline-block;
@@ -149,7 +150,7 @@
         
         .dot { width: 8px; height: 8px; border-radius: 50%; background-color: currentColor; }
 
-        /* 데이터 카드 영역 (4개 배열로 수정) */
+        /* 데이터 카드 영역 */
         .data-cards {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -182,26 +183,19 @@
         /* 차트 컨테이너 크기 확장 */
         .chart-container {
             position: relative;
-            height: 60vh; /* 화면 높이의 60% 사용 */
+            height: 60vh;
             width: 100%;
         }
 
         /* 반응형 모바일 처리 */
         @media (max-width: 1024px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
-            .data-cards {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .chart-container {
-                height: 50vh;
-            }
+            .container { grid-template-columns: 1fr; }
+            .data-cards { grid-template-columns: repeat(2, 1fr); }
+            .chart-container { height: 50vh; }
         }
     </style>
 </head>
 <body>
-
     <header>
         <h1>🚀 놀이공원에서 다양한 운동의 가속도 비교하기</h1>
         <p>웹 기반 실시간 데이터 수집 및 분석 탐구활동지</p>
@@ -268,6 +262,17 @@
                     <div style="background:#dbeafe; padding:3px; border-radius:3px;">A4 ➔ SDA</div>
                     <div style="background:#fef9c3; padding:3px; border-radius:3px;">A5 ➔ SCL</div>
                 </div>
+            </div>
+
+            <div class="panel procedure-box">
+                <h2 class="panel-title">📝 탐구 진행 순서</h2>
+                <ol style="padding-left: 20px; margin: 0; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px;">
+                    <li><strong>보드 연결:</strong> 아두이노를 PC와 연결하고, IDE <code>[툴]</code> 메뉴에서 보드(Uno)와 포트를 선택합니다.</li>
+                    <li><strong>라이브러리:</strong> <code>[스케치]-[라이브러리 관리]</code>에서 <b>Adafruit ADXL345</b>와 <b>Adafruit Unified Sensor</b>를 설치합니다.</li>
+                    <li><strong>코드 업로드 및 속도 설정:</strong> 코드를 보드에 업로드한 후 '시리얼 모니터'를 엽니다. 오른쪽 아래 통신 속도를 반드시 <b>115200 보드레이트</b>로 맞추어 값이 정상적으로 나오는지 확인합니다.</li>
+                    <li><strong>시리얼 모니터 종료:</strong> 값이 잘 나온다면 <b>반드시 시리얼 모니터 창을 닫아주세요.</b> (열려 있으면 웹 보고서와 연결할 수 없습니다.)</li>
+                    <li><strong>웹 보고서 연결:</strong> 우측 상단의 <b>[아두이노 연결하기]</b> 버튼을 누르고 포트를 선택합니다. 5초간 가만히 두어 영점을 잡은 후 측정을 시작합니다.</li>
+                </ol>
             </div>
         </aside>
 
@@ -376,8 +381,11 @@
         // 아두이노 연결 함수
         async function connectArduino() {
             try {
+                // 권한 요청 및 포트 선택
                 port = await navigator.serial.requestPort();
-                await port.open({ baudRate: 9600 });
+                
+                // 보드레이트를 115200으로 설정 (아두이노 코드와 동일해야 함)
+                await port.open({ baudRate: 115200 }); 
                 
                 connectBtn.textContent = '🔌 연결 해제';
                 connectBtn.classList.replace('btn-primary', 'btn-danger');
@@ -389,24 +397,83 @@
                 readLoop();
             } catch (err) {
                 console.error('연결 에러:', err);
-                alert("연결에 실패했습니다. 아두이노 IDE의 시리얼 모니터가 닫혀있는지 확인해주세요.\n\n상세 오류: " + err.message);
+                // 오류 유형에 따른 친절한 안내 메시지
+                if (err.name === 'SecurityError' || err.message.includes('permissions policy')) {
+                    alert("⚠️ 권한 차단됨: 구글 사이트 내부에 삽입된 화면에서는 시리얼 통신을 사용할 수 없습니다.\n\n해결방법: 깃허브 배포 주소를 '새 탭'이나 '새 창'으로 직접 열어서 실행해주세요.");
+                } else if (err.message.includes('Failed to open serial port')) {
+                    alert("⚠️ 포트 열기 실패: 아두이노 IDE의 '시리얼 모니터' 창이 열려 있다면 반드시 닫아주세요.");
+                } else {
+                    alert("연결에 실패했습니다.\n\n상세 오류: " + err.message);
+                }
             }
         }
 
         // 아두이노 연결 해제 함수
         async function disconnectArduino() {
             keepReading = false;
-            if (reader) {
-                await reader.cancel();
-            }
-            if (port) {
-                await port.close();
-                port = null;
-            }
             
-            connectBtn.textContent = '🔌 아두이노 연결하기';
-            connectBtn.classList.replace('btn-danger', 'btn-primary');
-            updateStatus('연결 대기 중', '');
+            // reader가 존재하면 취소하여 readLoop의 무한 루프를 빠져나오게 함
+            if (reader) {
+                try {
+                    await reader.cancel();
+                } catch (e) {
+                    console.log("reader.cancel() 에러 (무시가능):", e);
+                }
+            }
+            // 포트 닫기는 readLoop 내부의 finally 구문에서 안전하게 처리됩니다.
+        }
+
+        // 데이터 읽기 루프 (안정성 강화 버전)
+        async function readLoop() {
+            while (port.readable && keepReading) {
+                const textDecoder = new TextDecoderStream();
+                const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+                reader = textDecoder.readable.getReader();
+                
+                try {
+                    let buffer = '';
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) {
+                            // reader.cancel()이 호출되어 읽기가 종료됨
+                            break; 
+                        }
+                        if (value) {
+                            buffer += value;
+                            let lines = buffer.split('\n');
+                            
+                            // 완전한 줄(line)만 처리하고, 마지막 불완전한 조각은 버퍼에 남김
+                            for (let i = 0; i < lines.length - 1; i++) {
+                                let line = lines[i].trim();
+                                if(line) processData(line);
+                            }
+                            buffer = lines[lines.length - 1];
+                        }
+                    }
+                } catch (error) {
+                    console.error('읽기 에러:', error);
+                    keepReading = false;
+                } finally {
+                    // 리더 잠금 해제
+                    reader.releaseLock();
+                }
+                
+                // 스트림과 포트를 안전하게 닫기
+                try {
+                    await readableStreamClosed.catch(() => {}); // 취소로 인한 에러 무시
+                    if (port && !keepReading) {
+                        await port.close();
+                        port = null;
+                        
+                        // UI 초기화
+                        connectBtn.textContent = '🔌 아두이노 연결하기';
+                        connectBtn.classList.replace('btn-danger', 'btn-primary');
+                        updateStatus('연결 대기 중', '');
+                    }
+                } catch(e) {
+                    console.error("포트 닫기 에러:", e);
+                }
+            }
         }
 
         // 영점 조절 모드 시작
@@ -424,44 +491,16 @@
             statusBadge.className = 'status-badge ' + className;
         }
 
-        // 데이터 읽기 루프
-        async function readLoop() {
-            const textDecoder = new TextDecoderStream();
-            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
-            reader = textDecoder.readable.getReader();
-            
-            let buffer = '';
-
-            try {
-                while (keepReading) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-                    
-                    buffer += value;
-                    let lines = buffer.split('\n');
-                    
-                    for (let i = 0; i < lines.length - 1; i++) {
-                        let line = lines[i].trim();
-                        if(line) processData(line);
-                    }
-                    buffer = lines[lines.length - 1];
-                }
-            } catch (error) {
-                console.error('읽기 에러:', error);
-            } finally {
-                reader.releaseLock();
-            }
-        }
-
         // 데이터 처리 및 그래프 업데이트
         function processData(line) {
-            // 아두이노에서 "X:1.23, Y:4.56, Z:9.81" 형태로 전송한다고 가정
+            // 다양한 출력 형식 대응 (정규식으로 숫자, 소수점, -기호만 추출)
             let parts = line.split(',');
             if (parts.length >= 3) {
                 try {
-                    let rawX = parseFloat(parts[0].split(':')[1] || parts[0]);
-                    let rawY = parseFloat(parts[1].split(':')[1] || parts[1]);
-                    let rawZ = parseFloat(parts[2].split(':')[1] || parts[2]);
+                    // "X:1.23" 형태이든 그냥 "1.23" 형태이든 숫자만 안정적으로 파싱
+                    let rawX = parseFloat(parts[0].replace(/[^0-9.-]/g, ''));
+                    let rawY = parseFloat(parts[1].replace(/[^0-9.-]/g, ''));
+                    let rawZ = parseFloat(parts[2].replace(/[^0-9.-]/g, ''));
 
                     if (isNaN(rawX) || isNaN(rawY) || isNaN(rawZ)) return;
 
