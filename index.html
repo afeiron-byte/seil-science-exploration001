@@ -50,14 +50,15 @@
             font-size: 0.9rem;
         }
 
-        /* 와이드 레이아웃 적용 */
+        /* 와이드 레이아웃 적용: CSS Grid 사용 */
         .container {
             width: 96%;
             max-width: 1920px;
             margin: 20px auto;
             display: grid;
-            grid-template-columns: 320px 1fr;
+            grid-template-columns: 350px 1fr; /* 왼쪽 패널을 350px로 고정, 나머지는 메인 패널이 차지 */
             gap: 24px;
+            align-items: start; /* 패널들이 위쪽으로 정렬되도록 설정 */
         }
 
         .panel {
@@ -84,6 +85,7 @@
         .standards-box { border-left: 4px solid #3b82f6; }
         .materials-box { border-left: 4px solid #10b981; }
         .circuit-box { border-left: 4px solid #f59e0b; }
+        .code-box { border-left: 4px solid #475569; }
         .procedure-box { border-left: 4px solid #8b5cf6; }
 
         .tag {
@@ -97,7 +99,7 @@
             margin-bottom: 10px;
         }
 
-        ul { padding-left: 20px; margin: 0; font-size: 0.95rem; }
+        ul, ol { padding-left: 20px; margin: 0; font-size: 0.95rem; }
         li { margin-bottom: 8px; }
 
         /* 컨트롤 영역 */
@@ -150,7 +152,14 @@
         
         .dot { width: 8px; height: 8px; border-radius: 50%; background-color: currentColor; }
 
-        /* 데이터 카드 영역 */
+        /* 메인 패널의 Flex 레이아웃 구조 */
+        main.panel {
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 120px); /* 화면 전체를 최대한 채우도록 설정 */
+        }
+
+        /* 데이터 카드 영역 (4개 배열) */
         .data-cards {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -181,17 +190,31 @@
         .data-unit { font-size: 0.8rem; color: var(--text-muted); }
 
         /* 차트 컨테이너 크기 확장 */
+        /* Flex-grow를 사용하여 남은 공간을 모두 차지하도록 설정 */
         .chart-container {
             position: relative;
-            height: 60vh;
+            flex-grow: 1; /* 핵심: 차트 영역이 늘어나도록 설정 */
+            min-height: 400px; /* 차트가 찌그러지지 않도록 최소 높이 설정 */
             width: 100%;
+            margin-bottom: 20px;
+        }
+
+        /* AI 챗봇 컨테이너를 맨 아래로 고정 */
+        .chatbot-container {
+            margin-top: auto; /* Flex 컨테이너 내에서 최대한 아래로 밀어냄 */
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
         }
 
         /* 반응형 모바일 처리 */
         @media (max-width: 1024px) {
-            .container { grid-template-columns: 1fr; }
-            .data-cards { grid-template-columns: repeat(2, 1fr); }
-            .chart-container { height: 50vh; }
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .data-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
     </style>
 </head>
@@ -264,20 +287,42 @@
                 </div>
             </div>
 
-            <div class="panel procedure-box">
-                <h2 class="panel-title">📝 탐구 진행 순서</h2>
-                <ol style="padding-left: 20px; margin: 0; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px;">
-                    <li><strong>보드 연결:</strong> 아두이노를 PC와 연결하고, IDE <code>[툴]</code> 메뉴에서 보드(Uno)와 포트를 선택합니다.</li>
-                    <li><strong>라이브러리:</strong> <code>[스케치]-[라이브러리 관리]</code>에서 <b>Adafruit ADXL345</b>와 <b>Adafruit Unified Sensor</b>를 설치합니다.</li>
-                    <li><strong>코드 업로드 및 속도 설정:</strong> 코드를 보드에 업로드한 후 '시리얼 모니터'를 엽니다. 오른쪽 아래 통신 속도를 반드시 <b>115200 보드레이트</b>로 맞추어 값이 정상적으로 나오는지 확인합니다.</li>
-                    <li><strong>시리얼 모니터 종료:</strong> 값이 잘 나온다면 <b>반드시 시리얼 모니터 창을 닫아주세요.</b> (열려 있으면 웹 보고서와 연결할 수 없습니다.)</li>
-                    <li><strong>웹 보고서 연결:</strong> 우측 상단의 <b>[아두이노 연결하기]</b> 버튼을 누르고 포트를 선택합니다. 5초간 가만히 두어 영점을 잡은 후 측정을 시작합니다.</li>
-                </ol>
+            <div class="panel code-box">
+                <h2 class="panel-title">💻 아두이노 코드</h2>
+                <div style="background: #1e293b; color: #f8fafc; padding: 15px; border-radius: 8px; font-size: 0.85rem; overflow-x: auto; font-family: monospace; white-space: pre; line-height: 1.4;">#include &lt;Wire.h&gt;
+#include &lt;Adafruit_Sensor.h&gt;
+#include &lt;Adafruit_ADXL345_U.h&gt;
+
+Adafruit_ADXL345_Unified accel = 
+  Adafruit_ADXL345_Unified(12345);
+
+void setup() {
+  Serial.begin(115200);
+  if(!accel.begin()) {
+    Serial.println("No ADXL345");
+    while(1);
+  }
+}
+
+void loop() {
+  sensors_event_t event; 
+  accel.getEvent(&amp;event);
+  
+  Serial.print("X:"); 
+  Serial.print(event.acceleration.x);
+  Serial.print(", Y:"); 
+  Serial.print(event.acceleration.y);
+  Serial.print(", Z:"); 
+  Serial.println(event.acceleration.z);
+  
+  delay(100);
+}</div>
             </div>
         </aside>
 
         <!-- 메인 데이터 패널 -->
         <main class="panel">
+            
             <div class="controls">
                 <button id="connectBtn" class="btn-primary">🔌 아두이노 연결하기</button>
                 <div id="statusBadge" class="status-badge"><div class="dot"></div>연결 대기 중</div>
@@ -289,6 +334,20 @@
                 <button id="imgBtn" class="btn-primary">🖼️ 그래프 저장</button>
             </div>
 
+            <!-- 1. 탐구 진행 순서 (최상단) -->
+            <div class="panel procedure-box" style="margin-bottom: 20px; box-shadow: none; border: 1px solid #e2e8f0; background-color: #f8fafc;">
+                <h2 class="panel-title" style="border-bottom: none; margin-bottom: 10px; color: #475569;">📝 탐구 진행 순서</h2>
+                <ol>
+                    <li>왼쪽 아두이노 코드를 복사하여 아두이노 IDE에 붙여넣고 업로드합니다.</li>
+                    <li>아두이노 IDE의 <strong>시리얼 모니터(돋보기 아이콘)</strong>를 열어 통신 속도를 <strong>115200 보드레이트</strong>로 맞춥니다.</li>
+                    <li>데이터가 잘 나오는 것을 확인했으면, <strong>반드시 시리얼 모니터 창을 닫아주세요.</strong> (닫지 않으면 웹과 연결할 수 없습니다.)</li>
+                    <li>위의 <strong>[아두이노 연결하기]</strong> 버튼을 누르고 연결된 포트(예: COM3)를 선택합니다.</li>
+                    <li><strong>영점 조절 (5초):</strong> 연결 직후 5초간은 센서를 가만히 두세요. 현재 상태를 기준점(0)으로 자동 설정합니다.</li>
+                    <li>센서를 움직여 가속도 변화를 관찰하고, 필요시 데이터를 저장합니다.</li>
+                </ol>
+            </div>
+
+            <!-- 2. 가속도 데이터 값 (그 다음) -->
             <div class="data-cards">
                 <div class="data-card x">
                     <div class="data-label">X축 가속도</div>
@@ -312,9 +371,21 @@
                 </div>
             </div>
 
+            <!-- 3. 그래프 영역 (그 다음) -->
             <div class="chart-container">
                 <canvas id="accelChart"></canvas>
             </div>
+
+            <!-- 4. AI 챗봇 버튼 (맨 아래 고정) -->
+            <div class="chatbot-container">
+                <h2 class="panel-title" style="justify-content: center; border-bottom: none; margin-bottom: 5px;">🤖 AI 탐구 도우미</h2>
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 15px;">탐구 결과를 분석하거나 궁금한 점을 챗봇에게 질문해 보세요.</p>
+                
+                <a href="https://gemini.google.com/gem/1zMyXgVg7XD00_Q54J4npU5HuNIIcrhpS?usp=sharing" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; background-color: var(--primary-color); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 1rem; transition: background-color 0.2s; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                    새 창에서 AI 챗봇 열기 ↗
+                </a>
+            </div>
+
         </main>
     </div>
 
@@ -351,7 +422,7 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: false, // 컨테이너 크기에 맞춰 유연하게 조절
                 animation: false,
                 interaction: { mode: 'index', intersect: false },
                 scales: {
@@ -381,10 +452,8 @@
         // 아두이노 연결 함수
         async function connectArduino() {
             try {
-                // 권한 요청 및 포트 선택
                 port = await navigator.serial.requestPort();
-                
-                // 보드레이트를 115200으로 설정 (아두이노 코드와 동일해야 함)
+                // 아두이노 코드와 동일하게 115200으로 통일
                 await port.open({ baudRate: 115200 }); 
                 
                 connectBtn.textContent = '🔌 연결 해제';
@@ -397,13 +466,12 @@
                 readLoop();
             } catch (err) {
                 console.error('연결 에러:', err);
-                // 오류 유형에 따른 친절한 안내 메시지
-                if (err.name === 'SecurityError' || err.message.includes('permissions policy')) {
-                    alert("⚠️ 권한 차단됨: 구글 사이트 내부에 삽입된 화면에서는 시리얼 통신을 사용할 수 없습니다.\n\n해결방법: 깃허브 배포 주소를 '새 탭'이나 '새 창'으로 직접 열어서 실행해주세요.");
-                } else if (err.message.includes('Failed to open serial port')) {
-                    alert("⚠️ 포트 열기 실패: 아두이노 IDE의 '시리얼 모니터' 창이 열려 있다면 반드시 닫아주세요.");
+                if (err.name === 'SecurityError') {
+                    alert("USB 연결 권한이 없습니다. 구글 사이트 내에 삽입된 상태라면 권한이 차단됩니다. 링크를 복사하여 새 인터넷 창에서 열어주세요!");
+                } else if (err.name === 'NotFoundError') {
+                     // 사용자가 취소한 경우
                 } else {
-                    alert("연결에 실패했습니다.\n\n상세 오류: " + err.message);
+                    alert("연결에 실패했습니다. 아두이노 IDE의 시리얼 모니터가 닫혀있는지 확인해주세요.\n\n상세 오류: " + err.message);
                 }
             }
         }
@@ -412,68 +480,21 @@
         async function disconnectArduino() {
             keepReading = false;
             
-            // reader가 존재하면 취소하여 readLoop의 무한 루프를 빠져나오게 함
             if (reader) {
                 try {
                     await reader.cancel();
-                } catch (e) {
-                    console.log("reader.cancel() 에러 (무시가능):", e);
-                }
+                } catch(e) {}
             }
-            // 포트 닫기는 readLoop 내부의 finally 구문에서 안전하게 처리됩니다.
-        }
-
-        // 데이터 읽기 루프 (안정성 강화 버전)
-        async function readLoop() {
-            while (port.readable && keepReading) {
-                const textDecoder = new TextDecoderStream();
-                const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
-                reader = textDecoder.readable.getReader();
-                
+            if (port) {
                 try {
-                    let buffer = '';
-                    while (true) {
-                        const { value, done } = await reader.read();
-                        if (done) {
-                            // reader.cancel()이 호출되어 읽기가 종료됨
-                            break; 
-                        }
-                        if (value) {
-                            buffer += value;
-                            let lines = buffer.split('\n');
-                            
-                            // 완전한 줄(line)만 처리하고, 마지막 불완전한 조각은 버퍼에 남김
-                            for (let i = 0; i < lines.length - 1; i++) {
-                                let line = lines[i].trim();
-                                if(line) processData(line);
-                            }
-                            buffer = lines[lines.length - 1];
-                        }
-                    }
-                } catch (error) {
-                    console.error('읽기 에러:', error);
-                    keepReading = false;
-                } finally {
-                    // 리더 잠금 해제
-                    reader.releaseLock();
-                }
-                
-                // 스트림과 포트를 안전하게 닫기
-                try {
-                    await readableStreamClosed.catch(() => {}); // 취소로 인한 에러 무시
-                    if (port && !keepReading) {
-                        await port.close();
-                        port = null;
-                        
-                        // UI 초기화
-                        connectBtn.textContent = '🔌 아두이노 연결하기';
-                        connectBtn.classList.replace('btn-danger', 'btn-primary');
-                        updateStatus('연결 대기 중', '');
-                    }
-                } catch(e) {
-                    console.error("포트 닫기 에러:", e);
-                }
+                    await port.close();
+                } catch(e) {}
+                port = null;
             }
+            
+            connectBtn.textContent = '🔌 아두이노 연결하기';
+            connectBtn.classList.replace('btn-danger', 'btn-primary');
+            updateStatus('연결 대기 중', '');
         }
 
         // 영점 조절 모드 시작
@@ -491,16 +512,50 @@
             statusBadge.className = 'status-badge ' + className;
         }
 
+        // 데이터 읽기 루프 (안정화 적용)
+        async function readLoop() {
+            while (port && port.readable && keepReading) {
+                const textDecoder = new TextDecoderStream();
+                const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+                reader = textDecoder.readable.getReader();
+                
+                let buffer = '';
+
+                try {
+                    while (keepReading) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        
+                        buffer += value;
+                        let lines = buffer.split('\n');
+                        
+                        for (let i = 0; i < lines.length - 1; i++) {
+                            let line = lines[i].trim();
+                            if(line) processData(line);
+                        }
+                        buffer = lines[lines.length - 1];
+                    }
+                } catch (error) {
+                    console.error('읽기 에러 발생:', error);
+                } finally {
+                    reader.releaseLock();
+                }
+            }
+        }
+
         // 데이터 처리 및 그래프 업데이트
         function processData(line) {
-            // 다양한 출력 형식 대응 (정규식으로 숫자, 소수점, -기호만 추출)
             let parts = line.split(',');
             if (parts.length >= 3) {
                 try {
-                    // "X:1.23" 형태이든 그냥 "1.23" 형태이든 숫자만 안정적으로 파싱
-                    let rawX = parseFloat(parts[0].replace(/[^0-9.-]/g, ''));
-                    let rawY = parseFloat(parts[1].replace(/[^0-9.-]/g, ''));
-                    let rawZ = parseFloat(parts[2].replace(/[^0-9.-]/g, ''));
+                    // 정규식을 사용하여 숫자, 소수점, 마이너스 기호만 추출 (노이즈 필터링)
+                    let cleanX = parts[0].replace(/[^0-9.-]/g, '');
+                    let cleanY = parts[1].replace(/[^0-9.-]/g, '');
+                    let cleanZ = parts[2].replace(/[^0-9.-]/g, '');
+
+                    let rawX = parseFloat(cleanX);
+                    let rawY = parseFloat(cleanY);
+                    let rawZ = parseFloat(cleanZ);
 
                     if (isNaN(rawX) || isNaN(rawY) || isNaN(rawZ)) return;
 
@@ -518,17 +573,16 @@
                             isCalibrating = false;
                             updateStatus('연결됨 (데이터 수신 중)', 'connected');
                             
-                            // 차트 및 기록 초기화
                             clearData();
                         }
-                        return; // 영점 조절 중에는 그래프를 그리지 않음
+                        return;
                     }
 
                     // 영점 적용 및 전체 가속도 계산
                     let x = rawX - offsetX;
                     let y = rawY - offsetY;
                     let z = rawZ - offsetZ;
-                    let total = Math.sqrt(x*x + y*y + z*z); // 전체 가속도 계산 공식 적용
+                    let total = Math.sqrt(x*x + y*y + z*z);
 
                     // UI 수치 업데이트
                     document.getElementById('val-x').textContent = x.toFixed(2);
@@ -560,7 +614,7 @@
                     });
 
                 } catch (e) {
-                    console.log("데이터 파싱 에러:", e);
+                    // 무시
                 }
             }
         }
